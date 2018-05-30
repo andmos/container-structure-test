@@ -21,14 +21,19 @@ fileContentTests:
   path: '/etc/apt/apt.conf.d/apt-retry'
 fileExistenceTests:
 - name: 'Fake Dir'
-  isDirectory: true
   path: '/foo/bar'
   shouldExist: true
 - name: 'Wrong permissions'
-  isDirectory: false
   path: '/etc/apt/sources.list'
   permissions: '-rwxrwxrwx'
   shouldExist: true
 licenseTests:
 - debian: true
   files:
+metadataTest:
+  env:
+  - key: "MISSING_VAR"
+    value: "MISSING_VAR_VALUE"
+  labels:
+  - key: "missing.label"
+    value: "missing_label_value"

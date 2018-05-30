@@ -8,9 +8,25 @@ in an image, as well as verify metadata and contents of the filesystem.
 Tests can be run either through a standalone binary, or through a Docker image.
 
 ## Installation
-Download the latest binary release [here](https://storage.googleapis.com/container-structure-test/latest/container-structure-test),
-or pull the image at `gcr.io/gcp-runtimes/container-structure-test`.
-**Please note that at this time the binary is only compatible with Linux.**
+
+### OS X
+```shell
+curl -LO https://storage.googleapis.com/container-structure-test/latest/container-structure-test-darwin-amd64 && chmod +x container-structure-test-darwin-amd64 && sudo mv container-structure-test-darwin-amd64 /usr/local/bin/container-structure-test
+```
+
+### Linux
+```shell
+curl -LO https://storage.googleapis.com/container-structure-test/latest/container-structure-test-linux-amd64 && chmod +x container-structure-test-linux-amd64 && sudo mv container-structure-test-linux-amd64 /usr/local/bin/container-structure-test
+```
+
+If you want to avoid using sudo:
+
+```shell
+curl -LO https://storage.googleapis.com/container-structure-test/latest/container-structure-test-linux-amd64 && chmod +x container-structure-test-linux-amd64 && mkdir -p $HOME/bin && export PATH=$PATH:$HOME/bin && mv container-structure-test-linux-amd64 $HOME/bin/container-structure-test
+```
+
+Additionally, a container image for running tests through Google Cloud Builder can be found
+at `gcr.io/gcp-runtimes/container-structure-test:latest`.
 
 ## Setup
 To use container structure tests to validate your containers, you need the following:
@@ -167,6 +183,8 @@ of these checks are optional.
 
 - Env (`[]EnvVar`): A list of environment variable key/value pairs that should be set
 in the container.
+- Labels (`[]Label`): A list of image labels key/value pairs that should be set on the
+container.
 - Entrypoint (`[]string`): The entrypoint of the container
 - Cmd (`[]string`): The CMD specified in the container.
 - Exposed Ports (`[]string`): The ports exposed in the container.
@@ -179,6 +197,9 @@ metadataTest:
   env:
     - key: foo
       value: baz
+  labels:
+    - key: 'com.example.vendor'
+      value: 'ACME Incorporated'
   exposedPorts: ["8080", "2345"]
   volumes: ["/test"]
   entrypoint: []

@@ -4,8 +4,8 @@ dist: trusty
 language: java
 language: go
 go:
-        - 1.8.1
-go_import_path: github.com/GoogleCloudPlatform/container-structure-test
+  - 1.10.x
+go_import_path: github.com/GoogleContainerTools/container-structure-test
 
 jdk:
   - oraclejdk8
@@ -23,4 +23,5 @@ addons:
 script:
   - ./.gofmt.sh
   - make
+  - bazel test tests:go_default_test
   - ./tests/structure_test_tests.sh

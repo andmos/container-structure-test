@@ -22,11 +22,12 @@
 
 
 [[constraint]]
-  name = "github.com/GoogleCloudPlatform/container-diff"
+  name = "github.com/GoogleContainerTools/container-diff"
+  revision = "b2e2f7ef8897f29306877618f16f0d67d8a89094"
 
 [[constraint]]
   name = "github.com/fsouza/go-dockerclient"
 
 [[constraint]]
-  name = "github.com/ghodss/yaml"
-  version = "1.0.0"
+  branch = "master"
+  name = "github.com/GoogleCloudPlatform/runtimes-common"
