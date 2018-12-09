@@ -15,14 +15,16 @@
 # Bump these on release
 # These are only used for local builds, all released builds are done with Bazel
 VERSION_MAJOR ?= 1
-VERSION_MINOR ?= 2
-VERSION_BUILD ?= 2
+VERSION_MINOR ?= 5
+VERSION_BUILD ?= 0
 
 VERSION ?= v$(VERSION_MAJOR).$(VERSION_MINOR).$(VERSION_BUILD)
 
 GOOS ?= $(shell go env GOOS)
 GOARCH = amd64
+ORG := github.com/GoogleContainerTools
 PROJECT := container-structure-test
+REPOPATH ?= $(ORG)/$(PROJECT)
 RELEASE_BUCKET ?= gcp-container-tools/structure-test
 
 LD_FLAGS := -X github.com/GoogleContainerTools/container-structure-test/pkg/version.version=$(VERSION)
@@ -33,11 +35,13 @@ BUILD_DIR ?= ./out
 BUCKET ?= structure-test
 UPLOAD_LOCATION := gs://${BUCKET}
 
+BUILD_PACKAGE = $(REPOPATH)
+
 $(BUILD_DIR)/$(PROJECT): $(BUILD_DIR)/$(PROJECT)-$(GOOS)-$(GOARCH)
 	cp $(BUILD_DIR)/$(PROJECT)-$(GOOS)-$(GOARCH) $@
 
 $(BUILD_DIR)/$(PROJECT)-%-$(GOARCH): $(GO_FILES) $(BUILD_DIR)
-	GOOS=$* GOARCH=$(GOARCH) CGO_ENABLED=0 go build -ldflags="$(LD_FLAGS)" -o $@ .
+	GOOS=$* GOARCH=$(GOARCH) CGO_ENABLED=0 go build -ldflags="$(LD_FLAGS)" -o $@ $(BUILD_PACKAGE)
 
 %.sha256: %
 	shasum -a 256 $< &> $@
@@ -48,6 +52,7 @@ $(BUILD_DIR)/$(PROJECT)-%-$(GOARCH): $(GO_FILES) $(BUILD_DIR)
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
+.PRECIOUS: $(foreach platform, $(SUPPORTED_PLATFORMS), $(BUILD_DIR)/$(PROJECT)-$(platform))
 .PHONY: cross
 cross: $(foreach platform, $(SUPPORTED_PLATFORMS), $(BUILD_DIR)/$(PROJECT)-$(platform).sha256)
 
@@ -58,3 +63,6 @@ release: cross
 .PHONY: clean
 clean:
 	rm -rf $(BUILD_DIR)
+
+image:
+	docker build -t gcr.io/gcp-runtimes/container-structure-test:latest .

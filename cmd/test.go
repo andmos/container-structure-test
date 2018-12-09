@@ -129,7 +129,11 @@ func RunTests() {
 		Channel <- output.Banner(file)
 		tests, err := Parse(file)
 		if err != nil {
-			ctc_lib.Log.Errorf("Error parsing config file: %s", err)
+			Channel <- &unversioned.TestResult{
+				Errors: []string{
+					fmt.Sprintf("error parsing config file: %s", err),
+				},
+			}
 			continue // Continue with other config files
 		}
 		tests.RunAll(Channel, file)
@@ -179,7 +183,9 @@ func Parse(fp string) (types.StructureTest, error) {
 		return nil, errors.New("Unsupported schema version: " + version)
 	}
 
-	strictUnmarshal(testContents, st)
+	if err = strictUnmarshal(testContents, st); err != nil {
+		return nil, errors.New("error unmarshalling config: " + err.Error())
+	}
 
 	tests, _ := st.(types.StructureTest) //type assertion
 	tests.SetDriverImpl(driverImpl, *args)

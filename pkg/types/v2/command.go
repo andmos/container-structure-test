@@ -38,35 +38,41 @@ type CommandTest struct {
 	ExcludedError  []string       `yaml:"excludedError"` // excluded error from running command
 }
 
-func (ct *CommandTest) Validate() error {
+func (ct *CommandTest) Validate(channel chan interface{}) bool {
+	res := &types.TestResult{}
 	if ct.Name == "" {
-		return fmt.Errorf("Please provide a valid name for every test")
+		res.Error("Please provide a valid name for every test")
 	}
+	res.Name = ct.Name
 	if ct.Command == "" {
-		return fmt.Errorf("Please provide a valid Command to run for test %s", ct.Name)
+		res.Errorf("Please provide a valid command to run for test %s", ct.Name)
 	}
 	if ct.Setup != nil {
 		for _, c := range ct.Setup {
 			if len(c) == 0 {
-				return fmt.Errorf("Error in setup command configuration encountered; please check formatting and remove all empty setup commands")
+				res.Error("Error in setup command configuration encountered; please check formatting and remove all empty setup commands")
 			}
 		}
 	}
 	if ct.Teardown != nil {
 		for _, c := range ct.Teardown {
 			if len(c) == 0 {
-				return fmt.Errorf("Error in teardown command configuration encountered; please check formatting and remove all empty teardown commands")
+				res.Error("Error in teardown command configuration encountered; please check formatting and remove all empty teardown commands")
 			}
 		}
 	}
 	if ct.EnvVars != nil {
 		for _, envVar := range ct.EnvVars {
 			if envVar.Key == "" || envVar.Value == "" {
-				return fmt.Errorf("Please provide non-empty keys and values for all specified env vars")
+				res.Error("Please provide non-empty keys and values for all specified env vars")
 			}
 		}
 	}
-	return nil
+	if len(res.Errors) > 0 {
+		channel <- res
+		return false
+	}
+	return true
 }
 
 func (ct *CommandTest) LogName() string {
@@ -101,25 +107,25 @@ func (ct *CommandTest) Run(driver drivers.Driver) *types.TestResult {
 func (ct *CommandTest) CheckOutput(result *types.TestResult, stdout string, stderr string, exitCode int) {
 	for _, errStr := range ct.ExpectedError {
 		if !utils.CompileAndRunRegex(errStr, stderr, true) {
-			result.Errorf("Expected string '%s' not found in error", errStr)
+			result.Errorf("Expected string '%s' not found in error '%s'", errStr, stderr)
 			result.Fail()
 		}
 	}
 	for _, errStr := range ct.ExcludedError {
 		if !utils.CompileAndRunRegex(errStr, stderr, false) {
-			result.Errorf("Excluded string '%s' found in error", errStr)
+			result.Errorf("Excluded string '%s' found in error '%s'", errStr, stderr)
 			result.Fail()
 		}
 	}
 	for _, outStr := range ct.ExpectedOutput {
 		if !utils.CompileAndRunRegex(outStr, stdout, true) {
-			result.Errorf("Expected string '%s' not found in output", outStr)
+			result.Errorf("Expected string '%s' not found in output '%s'", outStr, stdout)
 			result.Fail()
 		}
 	}
 	for _, outStr := range ct.ExcludedOutput {
 		if !utils.CompileAndRunRegex(outStr, stdout, false) {
-			result.Errorf("Excluded string '%s' found in output", outStr)
+			result.Errorf("Excluded string '%s' found in output '%s'", outStr, stdout)
 			result.Fail()
 		}
 	}

@@ -15,8 +15,6 @@
 package v2
 
 import (
-	"fmt"
-
 	"github.com/GoogleCloudPlatform/runtimes-common/ctc_lib"
 	"github.com/GoogleContainerTools/container-structure-test/pkg/drivers"
 	types "github.com/GoogleContainerTools/container-structure-test/pkg/types/unversioned"
@@ -47,28 +45,35 @@ func (mt MetadataTest) LogName() string {
 	return "Metadata Test"
 }
 
-func (mt MetadataTest) Validate() error {
+func (mt MetadataTest) Validate(channel chan interface{}) bool {
+	res := &types.TestResult{
+		Name: mt.LogName(),
+	}
 	for _, envVar := range mt.Env {
 		if envVar.Key == "" {
-			return fmt.Errorf("Environment variable key cannot be empty")
+			res.Error("Environment variable key cannot be empty")
 		}
 	}
 	for _, label := range mt.Labels {
 		if label.Key == "" {
-			return fmt.Errorf("Label key cannot be empty")
+			res.Error("Label key cannot be empty")
 		}
 	}
 	for _, port := range mt.ExposedPorts {
 		if port == "" {
-			return fmt.Errorf("Port cannot be empty")
+			res.Error("Port cannot be empty")
 		}
 	}
 	for _, volume := range mt.Volumes {
 		if volume == "" {
-			return fmt.Errorf("Volume cannot be empty")
+			res.Error("Volume cannot be empty")
 		}
 	}
-	return nil
+	if len(res.Errors) > 0 {
+		channel <- res
+		return false
+	}
+	return true
 }
 
 func (mt MetadataTest) Run(driver drivers.Driver) *types.TestResult {
@@ -86,7 +91,13 @@ func (mt MetadataTest) Run(driver drivers.Driver) *types.TestResult {
 
 	for _, pair := range mt.Env {
 		if val, ok := imageConfig.Env[pair.Key]; ok {
-			if pair.Value != val {
+			var match bool
+			if pair.IsRegex {
+				match = utils.CompileAndRunRegex(pair.Value, val, true)
+			} else {
+				match = (pair.Value == val)
+			}
+			if !match {
 				result.Errorf("env var %s value %s does not match expected value: %s", pair.Key, val, pair.Value)
 				result.Fail()
 			}
@@ -98,7 +109,13 @@ func (mt MetadataTest) Run(driver drivers.Driver) *types.TestResult {
 
 	for _, pair := range mt.Labels {
 		if val, ok := imageConfig.Labels[pair.Key]; ok {
-			if pair.Value != val {
+			var match bool
+			if pair.IsRegex {
+				match = utils.CompileAndRunRegex(pair.Value, val, true)
+			} else {
+				match = (pair.Value == val)
+			}
+			if !match {
 				result.Errorf("label %s value %s does not match expected value: %s", pair.Key, val, pair.Value)
 				result.Fail()
 			}
@@ -115,7 +132,7 @@ func (mt MetadataTest) Run(driver drivers.Driver) *types.TestResult {
 		} else if len(*mt.Cmd) > 0 {
 			for i := range *mt.Cmd {
 				if (*mt.Cmd)[i] != imageConfig.Cmd[i] {
-					result.Errorf("Image config Cmd does not match expected value: %s", *mt.Cmd)
+					result.Errorf("Image config Cmd %v does not match expected value: %s", imageConfig.Cmd, *mt.Cmd)
 					result.Fail()
 				}
 			}
@@ -126,11 +143,12 @@ func (mt MetadataTest) Run(driver drivers.Driver) *types.TestResult {
 		if len(*mt.Entrypoint) != len(imageConfig.Entrypoint) {
 			result.Errorf("Image entrypoint %v does not match expected entrypoint: %v", imageConfig.Entrypoint, *mt.Entrypoint)
 			result.Fail()
-		}
-		for i := range *mt.Entrypoint {
-			if (*mt.Entrypoint)[i] != imageConfig.Entrypoint[i] {
-				result.Errorf("Image config entrypoint does not match expected value: %s", *mt.Entrypoint)
-				result.Fail()
+		} else {
+			for i := range *mt.Entrypoint {
+				if (*mt.Entrypoint)[i] != imageConfig.Entrypoint[i] {
+					result.Errorf("Image config entrypoint %v does not match expected value: %s", imageConfig.Entrypoint, *mt.Entrypoint)
+					result.Fail()
+				}
 			}
 		}
 	}
